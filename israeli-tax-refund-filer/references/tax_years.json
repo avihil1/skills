@@ -1,0 +1,109 @@
+{
+  "2023": {
+    "brackets": [
+      {"from": 0, "to": 81480, "rate": 0.10},
+      {"from": 81481, "to": 116760, "rate": 0.14},
+      {"from": 116761, "to": 187440, "rate": 0.20},
+      {"from": 187441, "to": 260520, "rate": 0.31},
+      {"from": 260521, "to": 542160, "rate": 0.35},
+      {"from": 542161, "to": 698280, "rate": 0.47}
+    ],
+    "surtax_threshold": 698280,
+    "surtax_rate_active": 0.03,
+    "surtax_rate_passive": 0.03,
+    "credit_point_value": 2820,
+    "donation_floor": 200,
+    "donation_ceiling_pct": 0.30,
+    "donation_credit_rate": 0.35,
+    "pension_45a_credit_rate": 0.35,
+    "pension_45a_employee_ceiling_pct": 0.07,
+    "capital_gains_rate": 0.25,
+    "capital_gains_rate_substantial": 0.30,
+    "rental_exempt_monthly": 5300
+  },
+  "2024": {
+    "brackets": [
+      {"from": 0, "to": 84120, "rate": 0.10},
+      {"from": 84121, "to": 120720, "rate": 0.14},
+      {"from": 120721, "to": 193800, "rate": 0.20},
+      {"from": 193801, "to": 269280, "rate": 0.31},
+      {"from": 269281, "to": 560280, "rate": 0.35},
+      {"from": 560281, "to": 721560, "rate": 0.47}
+    ],
+    "surtax_threshold": 721560,
+    "surtax_rate_active": 0.03,
+    "surtax_rate_passive": 0.03,
+    "credit_point_value": 2904,
+    "donation_floor": 200,
+    "donation_ceiling_pct": 0.30,
+    "donation_credit_rate": 0.35,
+    "pension_45a_credit_rate": 0.35,
+    "pension_45a_employee_ceiling_pct": 0.07,
+    "capital_gains_rate": 0.25,
+    "capital_gains_rate_substantial": 0.30,
+    "rental_exempt_monthly": 5471
+  },
+  "2025": {
+    "brackets": [
+      {"from": 0, "to": 84120, "rate": 0.10},
+      {"from": 84121, "to": 120720, "rate": 0.14},
+      {"from": 120721, "to": 193800, "rate": 0.20},
+      {"from": 193801, "to": 269280, "rate": 0.31},
+      {"from": 269281, "to": 560280, "rate": 0.35},
+      {"from": 560281, "to": 721560, "rate": 0.47}
+    ],
+    "surtax_threshold": 721560,
+    "surtax_rate_active": 0.03,
+    "surtax_rate_passive": 0.03,
+    "credit_point_value": 2904,
+    "donation_floor": 200,
+    "donation_ceiling_pct": 0.30,
+    "donation_credit_rate": 0.35,
+    "pension_45a_credit_rate": 0.35,
+    "pension_45a_employee_ceiling_pct": 0.07,
+    "capital_gains_rate": 0.25,
+    "capital_gains_rate_substantial": 0.30,
+    "rental_exempt_monthly": 5654
+  },
+  "2026": {
+    "brackets": [
+      {"from": 0, "to": 84120, "rate": 0.10},
+      {"from": 84121, "to": 120720, "rate": 0.14},
+      {"from": 120721, "to": 228000, "rate": 0.20},
+      {"from": 228001, "to": 301200, "rate": 0.31},
+      {"from": 301201, "to": 560280, "rate": 0.35},
+      {"from": 560281, "to": 721560, "rate": 0.47}
+    ],
+    "surtax_threshold": 721560,
+    "surtax_rate_active": 0.03,
+    "surtax_rate_passive": 0.05,
+    "credit_point_value": 2904,
+    "donation_floor": 200,
+    "donation_ceiling_pct": 0.30,
+    "donation_credit_rate": 0.35,
+    "pension_45a_credit_rate": 0.35,
+    "pension_45a_employee_ceiling_pct": 0.07,
+    "capital_gains_rate": 0.25,
+    "capital_gains_rate_substantial": 0.30,
+    "rental_exempt_monthly": 5654
+  },
+  "nekudot_zikui": {
+    "resident_male": 2.25,
+    "resident_female": 2.75,
+    "child_born_this_year": 1.5,
+    "child_1_to_5": 2.5,
+    "child_6_to_17": 1.0,
+    "child_18": 0.5,
+    "single_parent": 1.0,
+    "oleh_year_1": 3.0,
+    "oleh_year_2": 2.0,
+    "oleh_year_3": 1.0,
+    "ba_degree": 1.0,
+    "ma_degree": 0.5,
+    "vocational": 1.0,
+    "disability_100": 2.0,
+    "reserve_20_days": 0.5,
+    "reserve_45_days": 0.75,
+    "reserve_60_days": 1.0
+  }
+}

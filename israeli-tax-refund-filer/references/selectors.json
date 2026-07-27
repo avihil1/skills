@@ -1,0 +1,32 @@
+{
+  "_comment": "SHAAM portal selectors for Form 135. Update when portal DOM changes.",
+  "_last_verified": "2026-07-05",
+  "personal": {
+    "id_number": "input[name='teudat_zehut'], #idNumber",
+    "full_name": "input[name='shem'], #fullName",
+    "address": "input[name='ktovet'], #address"
+  },
+  "income": {
+    "gross_salary": "input[name='sachar_bruto'], #grossSalary",
+    "tax_withheld": "input[name='mas_shenuka'], #taxWithheld",
+    "employer_name": "input[name='shem_maavid'], #employerName",
+    "employer_id": "input[name='mispar_maavid'], #employerId"
+  },
+  "donations": {
+    "total_donations": "input[name='trumot_total'], #donationsTotal",
+    "donation_credit": "input[name='zikui_trumot'], #donationCredit"
+  },
+  "pension": {
+    "pension_deposit": "input[name='hafkada_pensia'], #pensionDeposit",
+    "pension_credit": "input[name='zikui_pensia'], #pensionCredit"
+  },
+  "credits": {
+    "nekudot_zikui_total": "input[name='nekudot_zikui'], #creditPoints",
+    "nekudot_zikui_value": "input[name='erech_nekudot'], #creditPointsValue"
+  },
+  "summary": {
+    "total_tax": "input[name='mas_kolel'], #totalTax",
+    "total_withheld": "input[name='mas_shenuka_kolel'], #totalWithheld",
+    "refund_amount": "input[name='hechzer'], #refundAmount"
+  }
+}
