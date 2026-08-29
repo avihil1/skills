@@ -66,7 +66,7 @@ Review the output. Report to the user:
 
   | # | Amount | Date | Institution |
   |---|---|---|---|
-  | 1 | 1,700 | 07/07/2025 | קהילה תורנית ישראלית |
+  | 1 | 1,000 | 01/01/YYYY | עמותה לדוגמה |
 
 - **Reconcile the file count.** `len(files)` must equal the number of non-hidden files in the
   folder. Anything missing means a classifier or glob dropped it silently.

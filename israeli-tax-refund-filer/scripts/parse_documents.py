@@ -235,7 +235,7 @@ def extract_form_106(text: str, filename: str, raw_text: str = "") -> dict:
                             pass
                     break
 
-    # Structured "סעיף / שדה" table fallback (e.g. Clalit / מלם שכר payroll format).
+    # Structured "סעיף / שדה" table fallback (e.g. the מלם שכר payroll format).
     _apply_structured_106(text, raw_text, data)
 
     return data
@@ -244,7 +244,7 @@ def extract_form_106(text: str, filename: str, raw_text: str = "") -> dict:
 def _amount_on_line(text: str, line_pattern: str) -> float | None:
     """Return the leading numeric amount of the first line matching line_pattern.
 
-    Structured Form 106 rows put the amount first: "135,921 <label> [field code]".
+    Structured Form 106 rows put the amount first: "12,345 <label> [field code]".
     The Hebrew label words may be in visual (reversed) order, so callers should
     anchor on a field code or on individual words rather than a fixed phrase.
     """
