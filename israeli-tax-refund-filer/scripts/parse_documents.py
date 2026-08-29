@@ -123,7 +123,7 @@ def extract_form_106(text: str, filename: str, raw_text: str = "") -> dict:
     if name_id_match:
         raw_name = name_id_match.group(1).strip()
         data["person_id"] = name_id_match.group(2).zfill(9)
-        # Split concatenated Hebrew name (e.g. "כהנאהלל" → "כהנא הלל")
+        # Split concatenated Hebrew name (e.g. "לויישראל" → "לוי ישראל")
         if raw_name and not ' ' in raw_name and len(raw_name) > 3:
             data["person_name"] = raw_name
         else:
@@ -235,7 +235,7 @@ def extract_form_106(text: str, filename: str, raw_text: str = "") -> dict:
                             pass
                     break
 
-    # Structured "סעיף / שדה" table fallback (e.g. Clalit / מלם שכר payroll format).
+    # Structured "סעיף / שדה" table fallback (e.g. the מלם שכר payroll format).
     _apply_structured_106(text, raw_text, data)
 
     return data
@@ -244,7 +244,7 @@ def extract_form_106(text: str, filename: str, raw_text: str = "") -> dict:
 def _amount_on_line(text: str, line_pattern: str) -> float | None:
     """Return the leading numeric amount of the first line matching line_pattern.
 
-    Structured Form 106 rows put the amount first: "135,921 <label> [field code]".
+    Structured Form 106 rows put the amount first: "12,345 <label> [field code]".
     The Hebrew label words may be in visual (reversed) order, so callers should
     anchor on a field code or on individual words rather than a fixed phrase.
     """
@@ -316,12 +316,12 @@ def _apply_structured_106(text: str, raw_text: str, data: dict) -> None:
             break
 
     if header:
-        # "מעסיק:שרותי בריאות כללית" → employer name (up to end / next label).
+        # "מעסיק:שם המעסיק בע"מ" → employer name (up to end / next label).
         emp = re.search(r'מעסיק\s*:?\s*(.+?)\s*$', header)
         if emp and not data["employer_name"]:
             data["employer_name"] = emp.group(1).strip()
 
-        # "עובד:בורשטיין כהנא אביגי[מספר]" → name (stop at מספר / ת.ז).
+        # "עובד:לוי ישראל[מספר]" → name (stop at מספר / ת.ז).
         nm = re.search(r'עובד\s*:?\s*(.+?)(?:מספר|\s*ת\.?\s*ז|$)', header)
         if nm:
             name = nm.group(1).strip()
@@ -520,7 +520,7 @@ def parse_folder(folder_path: str, tax_year: str) -> dict:
     }
 
     folder = Path(folder_path)
-    pdf_files = sorted(folder.glob("*.pdf"))
+    pdf_files = sorted(f for f in folder.iterdir() if f.suffix.lower() == ".pdf")
     image_exts = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
     image_files = sorted(
         p for p in folder.iterdir()

@@ -8,6 +8,22 @@ allowed-tools: Bash(python3:*), Bash(pip:*), Bash(open:*), Read, Write, Edit
 
 Automates Form 135 (דוח שנתי מקוצר) preparation and filing for salaried employees.
 
+## Displaying Hebrew in chat (read this before printing anything)
+
+The terminal picks a line's direction from its **first strong character**. One Hebrew word at the
+start of a Markdown row flips the whole row RTL — columns swap sides, values detach from their
+labels, and a mixed row like `| שכר 158/172 | 120,000 |` renders as garbage.
+
+Rules for anything you print to the user:
+
+- **Start every line and every table row with a Latin character.** English label first, Hebrew after.
+  Put digits and field numbers in the Latin part and the Hebrew label last in the cell:
+  `| Salary (158/172) — שכר | 120,000 |` renders correctly; `| שכר 158/172 | 120,000 |` does not.
+- **Never paste the generated Hebrew `.md` report into chat.** It is Hebrew-first by design and is
+  meant to be read in an editor. Summarize it in English instead and point at the file.
+- Hebrew inside a value (employer name, institution) is fine — it is not the first character of the line.
+- Do not "fix" it with spaces or by reversing strings; that corrupts the text. Reorder the line.
+
 ## Prerequisites
 
 Install once (the skill checks and installs if missing):
@@ -44,7 +60,27 @@ Review the output. Report to the user:
 - Any documents that were skipped and why
 - If multiple Form 106s were found for the same person (summed)
 - If a spouse was detected (second ID number)
+- **Every donation receipt, one row each** — index, amount, date, institution. Never report only a
+  count or a total: a receipt the parser mis-read or dropped is invisible in a total, and the user
+  is the only one who can spot a missing one. Latin-first rows (see *Displaying Hebrew in chat*):
+
+  | # | Amount | Date | Institution |
+  |---|---|---|---|
+  | 1 | 1,000 | 01/01/YYYY | עמותה לדוגמה |
+
+- **Reconcile the file count.** `len(files)` must equal the number of non-hidden files in the
+  folder. Anything missing means a classifier or glob dropped it silently.
 - **If any key fields are zero or missing, ask the user to provide them**
+
+Do not trust the parser's numbers. Before using them, dump the raw text of each Form 106
+(`pdfplumber` / `pdftotext -layout`) and check every field against it. Fields observed to parse as
+0 when the PDF clearly shows a value: `tax_withheld`, `pension_employee`, `life_insurance`,
+`person_name`, `employer_name`. Also confirm `person_id` is the person's ת.ז and not the employer's
+תיק ניכויים — both are 9 digits and sit near each other on the form.
+
+Scanned PDFs and images are NOT parsed. Read each one yourself (render the PDF, view the image)
+before concluding a document is irrelevant — donation receipts and insurance confirmations
+routinely arrive as scans.
 
 ### Step 3: Confirm extracted data and collect missing details
 
@@ -90,13 +126,33 @@ Save as `/tmp/tax-personal-<YEAR>.json`:
 python3 ~/.claude/skills/israeli-tax-refund-filer/scripts/calculate_tax.py /tmp/tax-parsed-<YEAR>.json /tmp/tax-personal-<YEAR>.json > /tmp/tax-calc-<YEAR>.json
 ```
 
+**Sanity-check the result before showing it.** Recompute what the employer should have withheld —
+brackets + surtax on salary alone, minus the credits the 106 says were applied — and compare with
+the 106's actual withholding. An employer's payroll system is right far more often than this
+calculator is; a gap over ~1% means the model is wrong, not the employer. This check is what
+surfaces bracket-table and ceiling errors, which otherwise show up only as an implausibly large
+refund.
+
+Treat any refund over a few thousand ₪ as a red flag to investigate, not a result to report.
+
 ### Step 5: Generate report
 
 ```bash
 python3 ~/.claude/skills/israeli-tax-refund-filer/scripts/generate_report.py /tmp/tax-calc-<YEAR>.json --output "<FOLDER>/refund-report-<YEAR>.md"
 ```
 
-Display the report to the user. Read and print the Markdown file content.
+**Do not print the Markdown file into chat** — it is Hebrew-first and the terminal will scramble it
+(see *Displaying Hebrew in chat*). Instead:
+
+1. `open "<FOLDER>/refund-report-<YEAR>.md"` so the user reads it with correct RTL rendering.
+2. Print an English-first summary table in chat, one row per figure, Latin label first:
+
+   | Field | Value |
+   |---|---|
+   | Salary (158/172) — שכר | 120,000 |
+   | Tax withheld (042) — מס שנוכה | 0 |
+   | Donations credit — זיכוי תרומות | 3,500 |
+   | **Expected refund** | **4,200** |
 
 ### Step 6: Generate PDF
 

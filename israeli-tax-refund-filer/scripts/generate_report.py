@@ -126,7 +126,13 @@ def generate_report(calc: dict) -> str:
         lines.append("| נייר ערך | תאריך קנייה | תאריך מכירה | מחיר קנייה (₪) | מחיר מכירה (₪) | רווח/הפסד (₪) |")
         lines.append("|----------|-------------|-------------|----------------|----------------|---------------|")
         for t in cg["transactions"]:
-            lines.append(f"| {t['security']} | {t['buy_date']} | {t['sell_date']} | {fmt(t['buy_price'])} | {fmt(t['sell_price'])} | {fmt(t['gain_loss'])} |")
+            # A gain reported straight off a Form 106 has no per-trade detail.
+            cells = [t.get('security') or t.get('source', ''), t.get('buy_date', '—'),
+                     t.get('sell_date', '—'),
+                     fmt(t['buy_price']) if 'buy_price' in t else '—',
+                     fmt(t['sell_price']) if 'sell_price' in t else '—',
+                     fmt(t['gain_loss'])]
+            lines.append('| ' + ' | '.join(str(c) for c in cells) + ' |')
         lines.append("")
         lines.append(f"**רווח/הפסד נטו:** {fmt(cg['net_gain_loss'])} ₪")
         lines.append(f"**מס רווח הון:** {fmt(cg['tax'])} ₪")
@@ -156,7 +162,8 @@ def generate_report(calc: dict) -> str:
     lines.append("| מדרגה | טווח הכנסה (₪) | שיעור | הכנסה במדרגה (₪) | מס (₪) |")
     lines.append("|-------|----------------|-------|-------------------|--------|")
     for b in calc["income_tax"]["brackets"]:
-        lines.append(f"| {b['rate']*100:.0f}% | {fmt(b['from'])} - {fmt(b['to'])} | {b['rate']*100:.0f}% | {fmt(b['income_in_bracket'])} | {fmt(b['tax'])} |")
+        rng = f"{fmt(b['from'])} - {fmt(b['to'])}" if b['to'] is not None else f"{fmt(b['from'])} ומעלה"
+        lines.append(f"| {b['rate']*100:.0f}% | {rng} | {b['rate']*100:.0f}% | {fmt(b['income_in_bracket'])} | {fmt(b['tax'])} |")
     lines.append(f"| | | **סה״כ** | | **{fmt(calc['income_tax']['total_tax'])}** |")
     lines.append("")
 
