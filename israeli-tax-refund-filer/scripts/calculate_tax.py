@@ -176,10 +176,34 @@ def calculate_income_tax(taxable_income: float, brackets: list) -> dict:
         total_tax += tax_in_bracket
         remaining -= taxable_in_bracket
 
+    # Income above the highest bracket keeps being taxed at the top marginal rate.
+    # Without this it fell off the table untaxed.
+    if remaining > 0 and brackets:
+        top = brackets[-1]
+        tax_above = remaining * top["rate"]
+        bracket_breakdown.append({
+            "from": top["to"] + 1,
+            "to": None,
+            "rate": top["rate"],
+            "income_in_bracket": remaining,
+            "tax": round(tax_above, 2),
+        })
+        total_tax += tax_above
+
     return {
         "brackets": bracket_breakdown,
         "total_tax": round(total_tax, 2),
     }
+
+
+def _selftest():
+    """Top-rate continuation: income past the last bracket must still be taxed."""
+    b = [{"from": 0, "to": 100, "rate": 0.1}, {"from": 101, "to": 200, "rate": 0.5}]
+    assert calculate_income_tax(150, b)["total_tax"] == 34.6, "101*.1 + 49*.5"
+    r = calculate_income_tax(300, b)                                 # 99 above the table
+    assert r["total_tax"] == 109.6, r["total_tax"]                   # 10.1 + 50 + 99*.5
+    assert r["brackets"][-1]["income_in_bracket"] == 99
+    print("selftest ok")
 
 
 def calculate_donations_credit(donations: list, taxable_income: float, tax_data: dict) -> dict:
@@ -191,10 +215,12 @@ def calculate_donations_credit(donations: list, taxable_income: float, tax_data:
     floor = tax_data["donation_floor"]
     ceiling = taxable_income * tax_data["donation_ceiling_pct"]
 
-    eligible = max(0, total_qualifying - floor)
+    # The floor is a minimum-donation THRESHOLD, not a deductible: clear it and the
+    # whole amount qualifies. Subtracting it understated the credit.
+    eligible = total_qualifying if total_qualifying >= floor else 0
     eligible = min(eligible, ceiling)
     credit = eligible * tax_data["donation_credit_rate"]
-    excess = max(0, total_qualifying - floor - ceiling)
+    excess = max(0, (total_qualifying if total_qualifying >= floor else 0) - ceiling)
 
     return {
         "qualifying_donations": qualifying,
@@ -212,7 +238,10 @@ def calculate_donations_credit(donations: list, taxable_income: float, tax_data:
 def calculate_pension_credit(aggregated_106: dict, tax_data: dict) -> dict:
     """Calculate Section 45A pension credit."""
     total_pension_employee = aggregated_106.get("total_pension_employee", 0)
-    gross_salary = aggregated_106.get("total_gross_salary", 0)
+    # The 7% cap runs on the capped "משכורת מזכה", NOT on full salary. Using full
+    # salary inflated the credit ~4x for high earners.
+    monthly_cap = tax_data.get("mashkoret_mezaka_monthly")
+    gross_salary = (monthly_cap * 12) if monthly_cap else aggregated_106.get("total_gross_salary", 0)
 
     ceiling = gross_salary * tax_data["pension_45a_employee_ceiling_pct"]
     qualifying = min(total_pension_employee, ceiling)
@@ -283,15 +312,29 @@ def calculate_refund(parsed_data: dict, personal: dict) -> dict:
 
     income_tax = calculate_income_tax(taxable_income, tax_data["brackets"])
 
+    capital_gains = calculate_capital_gains(parsed_data.get("brokerage", []), tax_data)
+
+    # Surtax base is ALL taxable income, salary + capital. From 2025 a second tier
+    # adds 2% on the capital-source portion sitting above the same threshold.
     surtax = 0
     surtax_details = None
-    if taxable_income > tax_data["surtax_threshold"]:
-        excess = taxable_income - tax_data["surtax_threshold"]
-        surtax = excess * tax_data["surtax_rate_active"]
+    capital_income = max(0, capital_gains["net_gain_loss"])
+    surtax_base = taxable_income + capital_income
+    threshold = tax_data["surtax_threshold"]
+    if surtax_base > threshold:
+        excess = surtax_base - threshold
+        tier1 = excess * tax_data["surtax_rate_active"]
+        capital_above = min(capital_income, excess)
+        tier2 = capital_above * tax_data.get("surtax_rate_capital_extra", 0)
+        surtax = tier1 + tier2
         surtax_details = {
-            "threshold": tax_data["surtax_threshold"],
+            "threshold": threshold,
             "excess": round(excess, 2),
             "rate": tax_data["surtax_rate_active"],
+            "tier1_amount": round(tier1, 2),
+            "capital_above_threshold": round(capital_above, 2),
+            "capital_extra_rate": tax_data.get("surtax_rate_capital_extra", 0),
+            "tier2_amount": round(tier2, 2),
             "amount": round(surtax, 2),
         }
 
@@ -306,8 +349,6 @@ def calculate_refund(parsed_data: dict, personal: dict) -> dict:
     insurance_credit = calculate_insurance_credit(
         parsed_data.get("insurance", []), primary_id
     )
-
-    capital_gains = calculate_capital_gains(parsed_data.get("brokerage", []), tax_data)
 
     gross_tax = income_tax["total_tax"] + surtax + capital_gains["tax"]
 

@@ -1,91 +1,190 @@
 {
   "2023": {
     "brackets": [
-      {"from": 0, "to": 81480, "rate": 0.10},
-      {"from": 81481, "to": 116760, "rate": 0.14},
-      {"from": 116761, "to": 187440, "rate": 0.20},
-      {"from": 187441, "to": 260520, "rate": 0.31},
-      {"from": 260521, "to": 542160, "rate": 0.35},
-      {"from": 542161, "to": 698280, "rate": 0.47}
+      {
+        "from": 0,
+        "to": 81480,
+        "rate": 0.1
+      },
+      {
+        "from": 81481,
+        "to": 116760,
+        "rate": 0.14
+      },
+      {
+        "from": 116761,
+        "to": 187440,
+        "rate": 0.2
+      },
+      {
+        "from": 187441,
+        "to": 260520,
+        "rate": 0.31
+      },
+      {
+        "from": 260521,
+        "to": 542160,
+        "rate": 0.35
+      },
+      {
+        "from": 542161,
+        "to": 698280,
+        "rate": 0.47
+      }
     ],
     "surtax_threshold": 698280,
     "surtax_rate_active": 0.03,
     "surtax_rate_passive": 0.03,
     "credit_point_value": 2820,
     "donation_floor": 200,
-    "donation_ceiling_pct": 0.30,
+    "donation_ceiling_pct": 0.3,
     "donation_credit_rate": 0.35,
     "pension_45a_credit_rate": 0.35,
     "pension_45a_employee_ceiling_pct": 0.07,
     "capital_gains_rate": 0.25,
-    "capital_gains_rate_substantial": 0.30,
+    "capital_gains_rate_substantial": 0.3,
     "rental_exempt_monthly": 5300
   },
   "2024": {
     "brackets": [
-      {"from": 0, "to": 84120, "rate": 0.10},
-      {"from": 84121, "to": 120720, "rate": 0.14},
-      {"from": 120721, "to": 193800, "rate": 0.20},
-      {"from": 193801, "to": 269280, "rate": 0.31},
-      {"from": 269281, "to": 560280, "rate": 0.35},
-      {"from": 560281, "to": 721560, "rate": 0.47}
+      {
+        "from": 0,
+        "to": 84120,
+        "rate": 0.1
+      },
+      {
+        "from": 84121,
+        "to": 120720,
+        "rate": 0.14
+      },
+      {
+        "from": 120721,
+        "to": 193800,
+        "rate": 0.2
+      },
+      {
+        "from": 193801,
+        "to": 269280,
+        "rate": 0.31
+      },
+      {
+        "from": 269281,
+        "to": 560280,
+        "rate": 0.35
+      },
+      {
+        "from": 560281,
+        "to": 721560,
+        "rate": 0.47
+      }
     ],
     "surtax_threshold": 721560,
     "surtax_rate_active": 0.03,
     "surtax_rate_passive": 0.03,
     "credit_point_value": 2904,
     "donation_floor": 200,
-    "donation_ceiling_pct": 0.30,
+    "donation_ceiling_pct": 0.3,
     "donation_credit_rate": 0.35,
     "pension_45a_credit_rate": 0.35,
     "pension_45a_employee_ceiling_pct": 0.07,
     "capital_gains_rate": 0.25,
-    "capital_gains_rate_substantial": 0.30,
+    "capital_gains_rate_substantial": 0.3,
     "rental_exempt_monthly": 5471
   },
   "2025": {
     "brackets": [
-      {"from": 0, "to": 84120, "rate": 0.10},
-      {"from": 84121, "to": 120720, "rate": 0.14},
-      {"from": 120721, "to": 193800, "rate": 0.20},
-      {"from": 193801, "to": 269280, "rate": 0.31},
-      {"from": 269281, "to": 560280, "rate": 0.35},
-      {"from": 560281, "to": 721560, "rate": 0.47}
+      {
+        "from": 0,
+        "to": 84120,
+        "rate": 0.1
+      },
+      {
+        "from": 84121,
+        "to": 120720,
+        "rate": 0.14
+      },
+      {
+        "from": 120721,
+        "to": 193800,
+        "rate": 0.2
+      },
+      {
+        "from": 193801,
+        "to": 269280,
+        "rate": 0.31
+      },
+      {
+        "from": 269281,
+        "to": 560280,
+        "rate": 0.35
+      },
+      {
+        "from": 560281,
+        "to": 721560,
+        "rate": 0.47
+      }
     ],
     "surtax_threshold": 721560,
     "surtax_rate_active": 0.03,
     "surtax_rate_passive": 0.03,
     "credit_point_value": 2904,
-    "donation_floor": 200,
-    "donation_ceiling_pct": 0.30,
+    "donation_floor": 207,
+    "donation_ceiling_pct": 0.3,
     "donation_credit_rate": 0.35,
     "pension_45a_credit_rate": 0.35,
     "pension_45a_employee_ceiling_pct": 0.07,
     "capital_gains_rate": 0.25,
-    "capital_gains_rate_substantial": 0.30,
-    "rental_exempt_monthly": 5654
+    "capital_gains_rate_substantial": 0.3,
+    "rental_exempt_monthly": 5654,
+    "surtax_rate_capital_extra": 0.02,
+    "mashkoret_mezaka_monthly": 9700
   },
   "2026": {
     "brackets": [
-      {"from": 0, "to": 84120, "rate": 0.10},
-      {"from": 84121, "to": 120720, "rate": 0.14},
-      {"from": 120721, "to": 228000, "rate": 0.20},
-      {"from": 228001, "to": 301200, "rate": 0.31},
-      {"from": 301201, "to": 560280, "rate": 0.35},
-      {"from": 560281, "to": 721560, "rate": 0.47}
+      {
+        "from": 0,
+        "to": 84120,
+        "rate": 0.1
+      },
+      {
+        "from": 84121,
+        "to": 120720,
+        "rate": 0.14
+      },
+      {
+        "from": 120721,
+        "to": 228000,
+        "rate": 0.2
+      },
+      {
+        "from": 228001,
+        "to": 301200,
+        "rate": 0.31
+      },
+      {
+        "from": 301201,
+        "to": 560280,
+        "rate": 0.35
+      },
+      {
+        "from": 560281,
+        "to": 721560,
+        "rate": 0.47
+      }
     ],
     "surtax_threshold": 721560,
     "surtax_rate_active": 0.03,
     "surtax_rate_passive": 0.05,
     "credit_point_value": 2904,
     "donation_floor": 200,
-    "donation_ceiling_pct": 0.30,
+    "donation_ceiling_pct": 0.3,
     "donation_credit_rate": 0.35,
     "pension_45a_credit_rate": 0.35,
     "pension_45a_employee_ceiling_pct": 0.07,
     "capital_gains_rate": 0.25,
-    "capital_gains_rate_substantial": 0.30,
-    "rental_exempt_monthly": 5654
+    "capital_gains_rate_substantial": 0.3,
+    "rental_exempt_monthly": 5654,
+    "surtax_rate_capital_extra": 0.02
   },
   "nekudot_zikui": {
     "resident_male": 2.25,
