@@ -178,17 +178,51 @@ Open the PDF for the user: `open "<FOLDER>/form-135-filled-<YEAR>.pdf"`
 Ask the user if they want to auto-fill the SHAAM portal.
 
 If yes:
-1. Ask the user to open Chrome with remote debugging (or reuse an existing session):
-   ```
-   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
-   ```
-2. Tell the user to log in to https://secapp.taxes.gov.il/shdochshana1301/frmMenu.aspx
-3. Connect via Playwright CDP (`pip install playwright && playwright install chromium`):
+
+**1. Launch your own browser — never ask the user to quit theirs.**
+
+Chrome only opens the debug port at launch, so "relaunch Chrome with
+`--remote-debugging-port=9222`" means killing their running session and losing every open tab.
+Don't. Start a *separate* browser binary with a throwaway profile instead; their Chrome, its tabs
+and the system `https` handler stay untouched.
+
+```bash
+# Prefer an automation build already on disk. Playwright's is under ~/Library/Caches/ms-playwright,
+# a puppeteer one under ~/.cache/puppeteer/chrome/*/chrome-mac-arm64/. Verify before launching:
+# p.chromium.executable_path returns the path Playwright EXPECTS, which may not be installed.
+CHROME="$HOME/.cache/puppeteer/chrome/<version>/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+test -x "$CHROME" || echo "not installed — run: playwright install chromium"
+nohup "$CHROME" --remote-debugging-port=9222 --user-data-dir="<scratchdir>/chrome-profile" \
+  --no-first-run --no-default-browser-check \
+  "https://secapp.taxes.gov.il/shdochshana1301/frmMenu.aspx" >"<scratchdir>/chrome.log" 2>&1 &
+```
+
+**Confirm the port is actually listening** — a failed launch is silent, and `nohup ... &` returns 0
+either way:
+
+```bash
+lsof -nP -iTCP:9222 -sTCP:LISTEN
+curl -s http://localhost:9222/json/version
+```
+
+Never identify the browser with `pgrep | head -1`. Machines routinely have leaked automation
+browsers from other projects; in one run `pgrep "Chrome for Testing"` returned a stale headless
+instance belonging to an unrelated tool. Anchor on the port and the profile path you passed.
+
+**2. The user logs in — you do not.** Fill the ת.ז field (`#ID`) to save typing, then focus
+`#code` and hand over. Never type, read, or store the קוד משתמש קבוע. Wait for them to confirm,
+then verify by DOM before acting.
+
+**3. Connect over CDP** (`pip install playwright && playwright install chromium`):
    ```python
    from playwright.sync_api import sync_playwright
    p = sync_playwright().start()
    browser = p.chromium.connect_over_cdp('http://localhost:9222')
    ```
+
+**Check which tab you are on by DOM, not `page.url`.** After a postback `page.url` frequently
+reports the *previous* page; probe for a field unique to the tab (`txtKtovetMail` = personal,
+`rbl02Hon_0` = general, `txt158` = income) instead.
 4. The form has 4 tabs navigated via `__doPostBack('ctl00$ctl00$ContentUsersPage$ChildContent1$wcTabs1$LinkButtonN', '')`:
    - LinkButton0: פרטים אישיים (Personal details) — pre-filled from login
    - LinkButton1: פרטים כלליים (General details) — radio buttons for salaried employee
@@ -321,7 +355,98 @@ Click `lnkTrumot` (calls `showWizardTrumot('037','237')`) to open the wizard in 
 3. Income tab — salary, tax, pension, insurance fields
 4. Children wizard — registered spouse first (`Bzr`), then spouse (`BnBtZug`)
 5. Donations wizard — **always last** (values clear on any postback)
-6. Save immediately after donations
+6. Save immediately after donations, then **stop touching the form**
+
+**"Last" means last, not "last in this pass."** After the donations save, going back to *any*
+other tab — even just to tick one checkbox — wipes `txt037` again, because leaving a tab is a
+postback. The failure is silent: the other tab saves fine, the donations field empties, and
+nothing warns you.
+
+So if you discover anything else that needs changing after donations are in:
+
+1. Make that change first.
+2. Re-run the donations wizard.
+3. Save, and end there.
+
+Treat the donations wizard as a commit you can only do once, at the very end. Before telling the
+user the form is complete, re-read `txt037` one final time — a value you set earlier in the
+session is not evidence it is still there.
+
+**Children fields are NOT fragile this way.** `txt260_*` / `txt262_*` survive postbacks and
+server errors normally, so an empty `txt260_6_17` means the wizard never ran, not that a postback
+cleared it. Note that only the age brackets that apply get populated: with all children aged
+6-17, `txt260_6_17` holds the count and `txt260Nolad` / `txt260_1_2` / `txt260_3` / `txt260_4_5`
+are correctly empty — that is not a missing value.
+
+#### Validate with בדיקת טופס before declaring the form done
+
+Always click `#btnBdikatTofes` and read the verdict. Never report the form complete on the strength
+of having filled the fields.
+
+**Attach a dialog handler first.** Playwright auto-dismisses `window.alert`/`confirm`, so a popup
+verdict disappears with no trace and the run looks clean:
+
+```python
+pg.on("dialog", lambda d: (captured.append(d.message), d.accept()))
+pg.eval_on_selector('#btnBdikatTofes', "e=>e.click()")
+```
+
+**Read the verdict from the hidden state, not from scraped page text:**
+
+| Read | Meaning |
+|---|---|
+| `hidHaveErr` | `"false"` = the form passed. This is the authoritative answer. |
+| `txtErr1` | The blocking message, when there is one. Populated even when not rendered where a text scrape would find it. |
+| `hidSumKodsError` | Field-total mismatch flag. |
+
+**Do not read `errBcolor` or `hidErrCtlID` as errors.** `hidErrCtlID` is a *static registry* of every
+control capable of showing an error, and dozens of fields carry the `errBcolor` class routinely — in
+one real run 49 fields were pink while `hidHaveErr` was `false`. Counting pink fields reports
+failures that do not exist.
+
+**בדיקת טופס does NOT clear `txt037`** (verified), but navigating to another tab afterwards does. So
+run it, and if you then move anywhere in the form, re-run the donations wizard before saving.
+
+**A "cannot request a refund, income exceeds the threshold" verdict is not a form defect.** It means
+the filer is above the refund-request ceiling and must file as an obligated filer with a תיק opened
+at their פקיד שומה (number shown in the פרטי תיק header). No field edit clears it.
+
+#### When the blocker is the filer's status, not the data
+
+Some verdicts cannot be cleared by editing any field — the filer's *file type* is wrong, not their
+numbers. The clearest example: `txtErr1` returning *"לא ניתן לבקש בקשה להחזר מס במקרה וההכנסה
+החייבת גבוהה מ..."*. That means income exceeds the refund-request ceiling, so the short
+refund-request route is closed and the person must file as an obligated filer with a proper תיק.
+
+**Check for an existing פנייה before telling the user to open one.** They have very likely already
+hit this and asked. Read `https://secapp.taxes.gov.il/sr-crm-pniyot/main/historyIncident` — the
+same login already covers it — and report the inquiry number, date and status instead of sending
+them to do work twice.
+
+**Route for a new one:** אזור אישי → **הפניות שלי** → פנייה חדשה, category
+**מס הכנסה > פתיחת או סגירת תיק ועדכון פרטים**. Quote the portal's exact error text in the body;
+it identifies the problem to the assessor immediately.
+
+**The "פתיחת תיק" tile in אזור אישי is a decoy here** — it opens only עוסק פטור, עסק זעיר or
+rental-income files, none of which fit a salaried filer. Sending someone there wastes a round trip.
+
+**The legal basis, useful if the assessor asks:** §131 requires an annual return from anyone liable
+for the §121ב surtax — taxable income over the threshold — **even when the employer withheld
+everything at source**. Salary plus capital gains both count toward it. This is the same condition
+as the `chkHacnasaHayevet` checkbox.
+
+**Fallback only if the פנייה stalls:** the פ"ש office named in the form's פרטי תיק header (code +
+חוליה). Some offices additionally want **טופס 5329** (דו"ח פרטים אישיים והצהרה על מקורות הכנסה) as
+the file-opening declaration. Do not submit 5329 or send the user to an office preemptively — the
+פנייה is often sufficient, and filing the wrong instrument creates its own cleanup.
+
+#### Capital-gains annex tab
+
+Answering `rbl02Hon` = כן makes a **רווח הון** tab appear (`LinkButton4`) that was not in the tab strip
+before. It holds `txtNumNispachim`, the `lnkRH` ("נספחי רווח הון") link and `ddlNispach` for building
+נספח ג / טופס 1322, and caps transmission at 14 annexes. Filling it needs sale proceeds and cost
+basis per sale — a §102 trustee statement or טופס 867 — which a Form 106 does not carry: the 106
+reports only the net gain and the tax withheld.
 
 #### Saving
 - Save button: `page.click('#btnShmiraZemani')` (NOT `__doPostBack` which may lose disabled fields).
