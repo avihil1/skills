@@ -198,8 +198,57 @@ Most fields are pre-filled from login. **Verify and fill:**
 These are required for the Tax Authority to send confirmation and correspondence.
 
 #### General details tab (LinkButton1)
-Fill all radio buttons for a salaried employee filing for refund. Key fields:
-- `rbl03Meshutaf_0` ("לא") — Section 66(d) joint assessment = No
+
+Nothing is pre-selected and **every group is a required field** — the form will not
+validate with any left blank. Enumerate the groups rather than working from this list alone;
+the form changes between tax years.
+
+**Never assume an option's index.** Read each option's own `<label for=...>` text and match on
+that. `_1` is "לא" in a כן/לא pair but "תושב חוזר ותיק" in the עולה groups — a positional guess
+puts a wrong declaration on a tax return.
+
+```js
+[...document.querySelectorAll("input[type=radio]")].forEach(r=>{ /* group by id.replace(/_\d+$/,'') */ })
+// then per option: document.querySelector("label[for='"+id+"']").innerText
+```
+
+For a salaried employee filing jointly:
+
+| Group | Set to | Meaning |
+|---|---|---|
+| `rbl02Hul` | לא | No foreign-income annex ד' |
+| `rbl02Hon` | כן **if** any capital gain is reported | Return includes a capital-gains annex |
+| `rbl02DochAl` | הכנסותי והכנסות בן/בת זוגי | Joint return covering both incomes |
+| `rbl03Meshutaf` | לא | Section 66(d) joint assessment = No |
+| `rbl04OleBzr` | לא רלוונטי | **עולה חדש / תושב חוזר — registered spouse** |
+| `rbl04OleBz` | לא רלוונטי | **עולה חדש / תושב חוזר — spouse** |
+| `rbl02PrisaDmeyLeda` | לא | No maternity-pay spreading |
+| `rbl02BaalShlita` / `rbl02BaalZhuyot` | לא | Not a controlling shareholder in a foreign body |
+| `rbl03Shudar` | לא רלוונטי | Form 6111 not required |
+| `rbl02Kupa` | לא | Operated no cash register (`הפעלתי קופה רושמת`) |
+| `rbl02Nemanut` | לא רלוונטי | Not a trust settlor/beneficiary |
+| `rbl02Meatim`, `rbl02KayemetPeula`, `rbl02KshurimBeHul`, `rbl02RevahimLoMehulakim`, `rbl02RevahimLoMehulakimNeches`, `rbl02SiyumBniya`, `rbl02HavatDaat`, `rbl02ChayavDivuach` | לא | Reportable-position / related-party declarations |
+
+**עולה חדש groups** (`rbl04OleBzr` = registered spouse, `rbl04OleBz` = spouse): options are
+`0`=עולה חדש, `1`=תושב חוזר ותיק, `2`=תושב חוזר, `3`=לא רלוונטי. Pick `3` unless the person is
+inside their benefit window; an aliyah decades ago is לא רלוונטי. Choosing 0–2 reveals a
+`תאריך הגעה לארץ` date field that must then be filled.
+
+**Checkboxes on this tab** — enumerate these too; they are easy to miss because they sit
+between the radio blocks:
+
+- `chkHacnasaHayevet` — *"בשנת המס היתה לי או לבן/בת זוגי הכנסה חייבת כהגדרתה בסעיף 121ב(ה)
+  לפקודה העולה על 721,560 ש''ח"*. This is the **מס יסף** (surtax) declaration. It must be checked
+  whenever combined taxable income — **salary plus capital gains**, not salary alone — exceeds the
+  surtax threshold. The portal may tick it automatically once the income fields are filled, but
+  verify it rather than trusting that, and re-verify after every save.
+
+**Leave unselected** (business-only, and they offer no "not relevant" option):
+`rbl02HanhalatHeshb` (כפולה/חד-צידית) and `rbl02NihulSfarim` (ממוחשב/ידני). `rbl02BenZugi` is
+disabled whenever `rbl02DochAl` = joint — its validator will not block.
+
+**Re-verify this whole tab after any portal error or re-entry.** Radio selections are the first
+thing lost when the session hiccups, and they fail silently — the tab still looks filled.
 
 #### Income tab (LinkButton2/4) — field mapping
 Fill from the **per-person Form 106 parsed data**, NOT from calculated totals:
