@@ -122,6 +122,17 @@ Save as `/tmp/tax-personal-<YEAR>.json`:
 
 ### Step 4: Calculate tax
 
+**First confirm the year's parameters exist and are current.** `references/tax_years.json` carries
+per-year values that drift annually — brackets, `surtax_threshold`, `credit_point_value`,
+`donation_floor`, `mashkoret_mezaka_monthly`. `calculate_tax.py` refuses to run when one is missing
+rather than substituting a wrong basis, so a `tax_years.json is incomplete` error means look the
+value up for that specific year. Never copy a figure across years and never guess one.
+
+Cross-check two of them against documents you already have, which is cheaper than trusting the file:
+`credit_point_value` = the 106's נקודות זיכוי value ÷ its point count, and `mashkoret_mezaka_monthly`
+= (the 106's §45א credit ÷ 0.35 ÷ 0.07) ÷ 12.
+
+
 ```bash
 python3 ~/.claude/skills/israeli-tax-refund-filer/scripts/calculate_tax.py /tmp/tax-parsed-<YEAR>.json /tmp/tax-personal-<YEAR>.json > /tmp/tax-calc-<YEAR>.json
 ```
@@ -237,11 +248,15 @@ inside their benefit window; an aliyah decades ago is לא רלוונטי. Choos
 **Checkboxes on this tab** — enumerate these too; they are easy to miss because they sit
 between the radio blocks:
 
-- `chkHacnasaHayevet` — *"בשנת המס היתה לי או לבן/בת זוגי הכנסה חייבת כהגדרתה בסעיף 121ב(ה)
-  לפקודה העולה על 721,560 ש''ח"*. This is the **מס יסף** (surtax) declaration. It must be checked
-  whenever combined taxable income — **salary plus capital gains**, not salary alone — exceeds the
-  surtax threshold. The portal may tick it automatically once the income fields are filled, but
-  verify it rather than trusting that, and re-verify after every save.
+- `chkHacnasaHayevet` — the **מס יסף** (surtax) declaration: *"בשנת המס היתה לי או לבן/בת זוגי
+  הכנסה חייבת כהגדרתה בסעיף 121ב(ה) לפקודה העולה על <threshold> ש''ח"*. Check it whenever combined
+  taxable income — **salary plus capital gains**, not salary alone — exceeds that year's threshold.
+  Read the figure off the label on screen and compare against `surtax_threshold` in
+  `references/tax_years.json`; **the threshold changes between years** (698,280 in 2023, 721,560 in
+  2024–2025), so never carry a remembered number across tax years. If the label and the JSON
+  disagree, the JSON is stale — fix it before trusting any computed figure, since the same
+  threshold drives the surtax calculation. The portal may tick the box automatically once income
+  fields are filled; verify rather than trust, and re-verify after every save.
 
 **Leave unselected** (business-only, and they offer no "not relevant" option):
 `rbl02HanhalatHeshb` (כפולה/חד-צידית) and `rbl02NihulSfarim` (ממוחשב/ידני). `rbl02BenZugi` is
