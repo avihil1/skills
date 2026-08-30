@@ -37,6 +37,23 @@ def load_tax_year_data(year: str) -> dict:
 
     data = all_data[year]
     data["nekudot_zikui"] = all_data["nekudot_zikui"]
+
+    # Year parameters drift annually (thresholds, ceilings, point value). A missing
+    # key must stop the run: every one of these silently degrades to a wrong number
+    # rather than an error, and the output still looks plausible.
+    required = [
+        "brackets", "surtax_threshold", "surtax_rate_active", "credit_point_value",
+        "donation_floor", "donation_ceiling_pct", "donation_credit_rate",
+        "pension_45a_credit_rate", "pension_45a_employee_ceiling_pct",
+        "capital_gains_rate", "mashkoret_mezaka_monthly",
+    ]
+    missing = [k for k in required if data.get(k) is None]
+    if missing:
+        raise ValueError(
+            f"tax_years.json is incomplete for {year}: missing {', '.join(missing)}. "
+            f"Look up each value for that tax year and add it — do not guess, and do not "
+            f"copy another year's figure; these change annually."
+        )
     return data
 
 
@@ -240,8 +257,7 @@ def calculate_pension_credit(aggregated_106: dict, tax_data: dict) -> dict:
     total_pension_employee = aggregated_106.get("total_pension_employee", 0)
     # The 7% cap runs on the capped "משכורת מזכה", NOT on full salary. Using full
     # salary inflated the credit ~4x for high earners.
-    monthly_cap = tax_data.get("mashkoret_mezaka_monthly")
-    gross_salary = (monthly_cap * 12) if monthly_cap else aggregated_106.get("total_gross_salary", 0)
+    gross_salary = tax_data["mashkoret_mezaka_monthly"] * 12
 
     ceiling = gross_salary * tax_data["pension_45a_employee_ceiling_pct"]
     qualifying = min(total_pension_employee, ceiling)
