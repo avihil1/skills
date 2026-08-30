@@ -321,7 +321,28 @@ Click `lnkTrumot` (calls `showWizardTrumot('037','237')`) to open the wizard in 
 3. Income tab — salary, tax, pension, insurance fields
 4. Children wizard — registered spouse first (`Bzr`), then spouse (`BnBtZug`)
 5. Donations wizard — **always last** (values clear on any postback)
-6. Save immediately after donations
+6. Save immediately after donations, then **stop touching the form**
+
+**"Last" means last, not "last in this pass."** After the donations save, going back to *any*
+other tab — even just to tick one checkbox — wipes `txt037` again, because leaving a tab is a
+postback. The failure is silent: the other tab saves fine, the donations field empties, and
+nothing warns you.
+
+So if you discover anything else that needs changing after donations are in:
+
+1. Make that change first.
+2. Re-run the donations wizard.
+3. Save, and end there.
+
+Treat the donations wizard as a commit you can only do once, at the very end. Before telling the
+user the form is complete, re-read `txt037` one final time — a value you set earlier in the
+session is not evidence it is still there.
+
+**Children fields are NOT fragile this way.** `txt260_*` / `txt262_*` survive postbacks and
+server errors normally, so an empty `txt260_6_17` means the wizard never ran, not that a postback
+cleared it. Note that only the age brackets that apply get populated: with all children aged
+6-17, `txt260_6_17` holds the count and `txt260Nolad` / `txt260_1_2` / `txt260_3` / `txt260_4_5`
+are correctly empty — that is not a missing value.
 
 #### Saving
 - Save button: `page.click('#btnShmiraZemani')` (NOT `__doPostBack` which may lose disabled fields).
