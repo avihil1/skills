@@ -377,6 +377,35 @@ run it, and if you then move anywhere in the form, re-run the donations wizard b
 the filer is above the refund-request ceiling and must file as an obligated filer with a תיק opened
 at their פקיד שומה (number shown in the פרטי תיק header). No field edit clears it.
 
+#### When the blocker is the filer's status, not the data
+
+Some verdicts cannot be cleared by editing any field — the filer's *file type* is wrong, not their
+numbers. The clearest example: `txtErr1` returning *"לא ניתן לבקש בקשה להחזר מס במקרה וההכנסה
+החייבת גבוהה מ..."*. That means income exceeds the refund-request ceiling, so the short
+refund-request route is closed and the person must file as an obligated filer with a proper תיק.
+
+**Check for an existing פנייה before telling the user to open one.** They have very likely already
+hit this and asked. Read `https://secapp.taxes.gov.il/sr-crm-pniyot/main/historyIncident` — the
+same login already covers it — and report the inquiry number, date and status instead of sending
+them to do work twice.
+
+**Route for a new one:** אזור אישי → **הפניות שלי** → פנייה חדשה, category
+**מס הכנסה > פתיחת או סגירת תיק ועדכון פרטים**. Quote the portal's exact error text in the body;
+it identifies the problem to the assessor immediately.
+
+**The "פתיחת תיק" tile in אזור אישי is a decoy here** — it opens only עוסק פטור, עסק זעיר or
+rental-income files, none of which fit a salaried filer. Sending someone there wastes a round trip.
+
+**The legal basis, useful if the assessor asks:** §131 requires an annual return from anyone liable
+for the §121ב surtax — taxable income over the threshold — **even when the employer withheld
+everything at source**. Salary plus capital gains both count toward it. This is the same condition
+as the `chkHacnasaHayevet` checkbox.
+
+**Fallback only if the פנייה stalls:** the פ"ש office named in the form's פרטי תיק header (code +
+חוליה). Some offices additionally want **טופס 5329** (דו"ח פרטים אישיים והצהרה על מקורות הכנסה) as
+the file-opening declaration. Do not submit 5329 or send the user to an office preemptively — the
+פנייה is often sufficient, and filing the wrong instrument creates its own cleanup.
+
 #### Capital-gains annex tab
 
 Answering `rbl02Hon` = כן makes a **רווח הון** tab appear (`LinkButton4`) that was not in the tab strip
