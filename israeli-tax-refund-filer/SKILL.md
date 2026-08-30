@@ -344,6 +344,47 @@ cleared it. Note that only the age brackets that apply get populated: with all c
 6-17, `txt260_6_17` holds the count and `txt260Nolad` / `txt260_1_2` / `txt260_3` / `txt260_4_5`
 are correctly empty — that is not a missing value.
 
+#### Validate with בדיקת טופס before declaring the form done
+
+Always click `#btnBdikatTofes` and read the verdict. Never report the form complete on the strength
+of having filled the fields.
+
+**Attach a dialog handler first.** Playwright auto-dismisses `window.alert`/`confirm`, so a popup
+verdict disappears with no trace and the run looks clean:
+
+```python
+pg.on("dialog", lambda d: (captured.append(d.message), d.accept()))
+pg.eval_on_selector('#btnBdikatTofes', "e=>e.click()")
+```
+
+**Read the verdict from the hidden state, not from scraped page text:**
+
+| Read | Meaning |
+|---|---|
+| `hidHaveErr` | `"false"` = the form passed. This is the authoritative answer. |
+| `txtErr1` | The blocking message, when there is one. Populated even when not rendered where a text scrape would find it. |
+| `hidSumKodsError` | Field-total mismatch flag. |
+
+**Do not read `errBcolor` or `hidErrCtlID` as errors.** `hidErrCtlID` is a *static registry* of every
+control capable of showing an error, and dozens of fields carry the `errBcolor` class routinely — in
+one real run 49 fields were pink while `hidHaveErr` was `false`. Counting pink fields reports
+failures that do not exist.
+
+**בדיקת טופס does NOT clear `txt037`** (verified), but navigating to another tab afterwards does. So
+run it, and if you then move anywhere in the form, re-run the donations wizard before saving.
+
+**A "cannot request a refund, income exceeds the threshold" verdict is not a form defect.** It means
+the filer is above the refund-request ceiling and must file as an obligated filer with a תיק opened
+at their פקיד שומה (number shown in the פרטי תיק header). No field edit clears it.
+
+#### Capital-gains annex tab
+
+Answering `rbl02Hon` = כן makes a **רווח הון** tab appear (`LinkButton4`) that was not in the tab strip
+before. It holds `txtNumNispachim`, the `lnkRH` ("נספחי רווח הון") link and `ddlNispach` for building
+נספח ג / טופס 1322, and caps transmission at 14 annexes. Filling it needs sale proceeds and cost
+basis per sale — a §102 trustee statement or טופס 867 — which a Form 106 does not carry: the 106
+reports only the net gain and the tax withheld.
+
 #### Saving
 - Save button: `page.click('#btnShmiraZemani')` (NOT `__doPostBack` which may lose disabled fields).
 - After save, verify all fields retained their values — especially `txt037` (donations), `txt086`, `txt249` which can be cleared by postbacks. If `txt037` was cleared, re-run the donations wizard and save again.
