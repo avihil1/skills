@@ -380,8 +380,22 @@ are correctly empty — that is not a missing value.
 
 #### Validate with בדיקת טופס before declaring the form done
 
-Always click `#btnBdikatTofes` and read the verdict. Never report the form complete on the strength
+Always click the check button and read the verdict. Never report the form complete on the strength
 of having filled the fields.
+
+**The check button is per-tab, and the wrong one silently no-ops.** `btnBdikatTofes` exists in the
+DOM of every tab but is *visible only on the income tab* (`frmTofes1301_2025.aspx`, labelled
+"בדיקת פירוט הכנסות, נספח חו''ל ורווח הון"). The פרטים כלליים and רווח הון tabs use **`btnBdika`**
+instead. Clicking a hidden `btnBdikatTofes` does nothing and raises no error — so enumerate the
+visible buttons for the tab you are on rather than hardcoding an id:
+
+```python
+pg.evaluate("""()=>[...document.querySelectorAll('input[type=button],input[type=submit]')]
+  .map(e=>e.id+'|'+(e.offsetParent!==null?'vis':'hid')+'|'+(e.value||e.title||''))""")
+```
+
+**Each tab validates only itself.** A `false` from the income tab is not a whole-form verdict —
+run the check on every tab that carries data, including רווח הון.
 
 **Attach a dialog handler first.** Playwright auto-dismisses `window.alert`/`confirm`, so a popup
 verdict disappears with no trace and the run looks clean:
@@ -395,9 +409,17 @@ pg.eval_on_selector('#btnBdikatTofes', "e=>e.click()")
 
 | Read | Meaning |
 |---|---|
-| `hidHaveErr` | `"false"` = the form passed. This is the authoritative answer. |
+| `hidHaveErr` | `"false"` = the form passed. **Empty string = the check never ran** — not a pass. Treat it as "no result" and find out why (usually a hidden button, or client-side validation refusing to submit). |
 | `txtErr1` | The blocking message, when there is one. Populated even when not rendered where a text scrape would find it. |
 | `hidSumKodsError` | Field-total mismatch flag. |
+
+When a client-side validator blocks the postback, `hidHaveErr` stays empty and the failure shows
+only as on-page red text — e.g. an empty required `txtNumNispachim` on רווח הון renders
+"חובה למלא נתון זה". Scrape for `/חובה|שגיא|יש למלא/` as a secondary read whenever `hidHaveErr`
+comes back empty.
+
+**The income-tab check redirects to פרטים כלליים when it finishes.** That is normal, not a fault —
+but it is a tab change, so it wipes `txt037`. Expect to land somewhere other than where you clicked.
 
 **Do not read `errBcolor` or `hidErrCtlID` as errors.** `hidErrCtlID` is a *static registry* of every
 control capable of showing an error, and dozens of fields carry the `errBcolor` class routinely — in
