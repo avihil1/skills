@@ -82,6 +82,23 @@ Scanned PDFs and images are NOT parsed. Read each one yourself (render the PDF, 
 before concluding a document is irrelevant — donation receipts and insurance confirmations
 routinely arrive as scans.
 
+**Open every file the parser labelled "לא מזוהה" or "דולג", without exception.** In one run those five
+files were an IDF reserve-service certificate, a credit-points statement, a life-insurance premium
+certificate, and two donation receipts already counted — and the parser's own filename-based guess was
+wrong about which was which (`Asakim_*.pdf` is the name of the receipt-printing vendor, not "עסקאות").
+A total hides a dropped receipt; a category label hides a misread document.
+
+**Two extraction traps.** `pdfplumber` returns many Hebrew PDFs with each line **reversed**, digits
+included — `365,631` is `136,563`. Reverse whole lines before reading, and never regex a year or an ID
+out of raw extracted text without accounting for it. Second, some Hebrew PDFs use a broken font
+encoding that yields pure garbage rather than reversed text, and true scans return 0 characters; for
+both, **render the page as an image and read it visually** instead of trusting any text at all.
+
+If `~/Documents` is involved, note that macOS TCC can deny it to spawned processes (`ls` returns
+`Operation not permitted`) even while the agent's own file reader works — and a browser pointed at
+`file://` will render the folder as *empty* rather than erroring. Ask the user to grant access or move
+the folder rather than reporting the documents as missing.
+
 ### Step 3: Confirm extracted data and collect missing details
 
 First, **show the user what was already extracted** from the Form 106 documents:
@@ -145,6 +162,27 @@ surfaces bracket-table and ceiling errors, which otherwise show up only as an im
 refund.
 
 Treat any refund over a few thousand ₪ as a red flag to investigate, not a result to report.
+
+**With a capital gain, this calculator's refund is a FLOOR, not the answer.** Only the *real* gain is
+taxable: §88 splits a capital gain into a real part (25%) and an **inflationary part that is exempt**,
+by indexing the original cost to the CPI between purchase and sale. This skill carries no CPI table,
+so `calculate_capital_gains` taxes the nominal gain unless a transaction supplies `real_gain`, and
+flags the result (`basis: "nominal"`). On a real 2025 return the indexation was ~6.68% of cost, cutting
+the taxable gain 136,563 → 125,612 and the tax 34,141 → 31,403. Say plainly that the portal's
+`חישוב` is the authoritative figure and do not present the estimate as the refund.
+
+**מס יסף has two tiers and they have different bases.** The 3% applies to *total* taxable income above
+`surtax_threshold`. The extra 2% (`surtax_rate_capital_extra`, from 2025) applies only when
+**capital-source income by itself** exceeds that same threshold, and then only to that excess — with a
+721,560 ₪ ceiling it almost never fires for a salaried filer. Applying it to whatever capital sits
+above the *combined* threshold invented 2,731 ₪ of tax on a real return. `scripts/test_capital_gains.py`
+pins both tiers; run it after touching this logic.
+
+**Reserve-duty credit points belong to the FOLLOWING tax year.** Under חוק 283 (effective 1.1.2026),
+service in year N grants points in year N+1, and **no points existed for tax year 2025 or earlier**.
+An IDF certificate headed "נקודות זיכוי לשנת <N>" is therefore *not* for year N's return — read its
+own body, which says so. Never infer the credit year by symmetry from another certificate; check the
+statute's effective date.
 
 ### Step 5: Generate report
 
@@ -279,6 +317,11 @@ For a salaried employee filing jointly:
 inside their benefit window; an aliyah decades ago is לא רלוונטי. Choosing 0–2 reveals a
 `תאריך הגעה לארץ` date field that must then be filled.
 
+**These two are the exception to "every group is required": `לא רלוונטי` is stored as no-selection.**
+They read back unselected on every fresh open even after being set and saved, and the tab still
+validates with zero failing validators. Set them once and move on — do not keep "fixing" them, and
+do not treat them as a blocker for שידור.
+
 **Checkboxes on this tab** — enumerate these too; they are easy to miss because they sit
 between the radio blocks:
 
@@ -353,9 +396,15 @@ Click `lnkTrumot` (calls `showWizardTrumot('037','237')`) to open the wizard in 
 1. Personal details tab — verify email + phone
 2. General details tab — radio buttons
 3. Income tab — salary, tax, pension, insurance fields
-4. Children wizard — registered spouse first (`Bzr`), then spouse (`BnBtZug`)
-5. Donations wizard — **always last** (values clear on any postback)
-6. Save immediately after donations, then **stop touching the form**
+4. Capital-gains annexes, if `rbl02Hon` = כן — plus `txtNumNispachim`, `txt056`
+5. Children wizard — registered spouse first (`Bzr`), then spouse (`BnBtZug`)
+6. **חישוב** — loop until it returns `frmResult.aspx`; each round may need a fix on any tab
+7. Donations wizard — **always last** (values clear on any postback)
+8. Save immediately after donations, then **stop touching the form**
+
+חישוב sits before donations deliberately: it bounces between tabs and will wipe `txt037`. Once a
+חישוב round forces you back into another tab, re-run the donations wizard and save again before
+calling the form done.
 
 **"Last" means last, not "last in this pass."** After the donations save, going back to *any*
 other tab — even just to tick one checkbox — wipes `txt037` again, because leaving a tab is a
@@ -465,10 +514,97 @@ the file-opening declaration. Do not submit 5329 or send the user to an office p
 #### Capital-gains annex tab
 
 Answering `rbl02Hon` = כן makes a **רווח הון** tab appear (`LinkButton4`) that was not in the tab strip
-before. It holds `txtNumNispachim`, the `lnkRH` ("נספחי רווח הון") link and `ddlNispach` for building
-נספח ג / טופס 1322, and caps transmission at 14 annexes. Filling it needs sale proceeds and cost
-basis per sale — a §102 trustee statement or טופס 867 — which a Form 106 does not carry: the 106
-reports only the net gain and the tax withheld.
+before, and `txtNumNispachim` ("מספר כולל של נספחים") becomes a **required** field — leave it blank and
+the tab's own check refuses to run. Transmission caps at 14 annexes. `lnkRH` is only a help popup and
+`ddlNispach`'s `showUpload()` handler merely clears an error message: **nothing pre-populates the
+annex**, so the per-sale data has to come from a document.
+
+**What a Form 106 does and does not give you.** The 106 reports only the net gain and the tax
+withheld. For §102 equity it shows two separate lines — `שווי הטבה לפי סעיף 102 - מסלול הכנסת עבודה`
+(taxed as salary, already inside field 158) and `רווח הון מנייר ערך` — plus `מס רווח הון מנייר ערך`.
+The annex needs sale date, proceeds and original cost **per sale**, which the 106 does not carry.
+
+**The document that does: the trustee's per-sale order confirmations.** For an RSU/option plan the
+trustee (IBI Capital, ESOP, Altshuler, …) issues a "Sale of Trustee Shares Activity Statement" per
+sale, carrying Grant Date, shares, sale price, an *Income Component* (value at grant, taxed as
+salary) and a *Capital Component*, plus the USD→NIS rate used. **Reconcile before entering
+anything:** the income components summed in NIS must equal the 106's §102 salary line, and the
+capital components its רווח הון line. On a real return these matched to within 0.31 ₪, which is what
+proved the field mapping was right. Ask the employer's equity team who the trustee is rather than
+guessing. These statements often print *"cannot be submitted to the Tax Authorities as a statement
+for tax return"* — they are fine as working data, but the formal instrument is the trustee's annual
+certificate or טופס 867.
+
+**Adding an annex:** select `ddlNispach` (option **53** = `טופס 1399י' - מניות/אופציות לפי סעיף 102
+מסלול הוני`; 60/64/65 are the 1322 tradable-securities annexes), click `btnHosafa`, then open the new
+row via `lnkArichaRH_<n>` (0-based). One annex holds **one sale**, so three sales means three annexes.
+
+**Annex form `frmRHseif102_<year>.aspx`:**
+
+| Field | Value |
+|---|---|
+| `txtPirteiNeches` | free-text asset description |
+| `ddlMocher` | `1` = בן הזוג הרשום (read the option labels; `3` = both spouses) |
+| `rbl02Shayachut_0` | asset belongs to the registered spouse |
+| `rbl02Prisa_1` | לא (spreading; `_0` reveals `ddlNumYear`) |
+| `txt15` + `txtTar15` | gross proceeds **before** sale expenses, and sale date |
+| `txt20` + `txtTar20` | original cost, and grant/acquisition date |
+| `txt55` | sale expenses not already deducted from proceeds |
+
+For §102 capital track the **original cost is the income component** already taxed as salary.
+`txtItra` ("יתרת מחיר מקורי") auto-computes — do not type into it.
+
+**Validator types differ per field and `hidHaveErr` will not tell you.** `txt15` and `txt55` are
+**Integer** (min 1); `txt20` is **Double**. Entering `86408.78` in `txt15` leaves `hidHaveErr` at
+`"false"` while two `Page_Validators` sit invalid. Always read
+`window.Page_Validators.filter(v => !v.isvalid)`, never `hidHaveErr` alone.
+
+Validate each annex with its own `btnBdika`; the tab grid then shows
+`הנספח עבר בדיקה בהצלחה` per row, and `btnChazara` returns to the רווח הון tab.
+
+**Then feed the income tab summary**, or חישוב fails (see below): `txt054` = number of annexes
+(auto-set), `txt056` = total proceeds. Per the portal's own help, proceeds reported on **טופס 1399י'
+go in 056**; only נספח ג1/ג2 (1322, tradable securities) go in `txt256`.
+
+#### Run חישוב — it validates far more than בדיקה does
+
+`btnHishuv` ("חישוב") runs server-side cross-field checks that every tab's בדיקה passes straight
+over, and it reports **one error at a time** as a red `.errfont` banner while `hidHaveErr` stays
+`"false"`. So loop: run חישוב, read the banner, fix, save, run again — until it returns the result
+page (`frmResult.aspx`). Treat a clean בדיקה on all tabs as necessary but nowhere near sufficient.
+
+Read the banner with:
+
+```python
+pg.evaluate("""()=>[...document.querySelectorAll('.errfont')]
+  .filter(e=>e.offsetParent!==null && (e.innerText||'').trim())
+  .map(e=>e.innerText.trim())""")
+```
+
+**Disabled "mirror" code fields are the most common חישוב failure.** Several declarations store a
+1-character code in a *disabled* field beside the radio (`txt331` for מקור הכנסה משותף, `txt263`
+for the 85א/reportable-position pair, `txt365`, …). Disabled inputs are not submitted, so a postback
+empties them while the radio still looks answered — producing
+`אי התאמה בנתוני מקור הכנסה משותף לשדה 331` or `יש סימונים בשדות, אך אין ערך בשדה 263`.
+
+The page ships the repair functions. Call **all** of them rather than chasing one code per חישוב
+round, and diff the form afterwards to prove nothing else moved:
+
+```python
+pg.evaluate("""()=>{for(const k in window)
+  if(typeof window[k]==='function' && /^check\\d+$/.test(k)) { try{ window[k]() }catch(e){} }}""")
+```
+
+Functions whose controls live on another tab throw harmlessly. The mapping is **not** the radio
+index — `do331()` maps `_1`→"1", `_2`→"", `_0`→"2" — so never write these codes by hand.
+
+**Per-spouse breakdowns must match their totals.** `אי התאמה בין סה''כ ניכוי במקור (שדה 040)` means
+field 040 has a total with no split: fill `txtSeif70` (number of certificates attached) and
+`txtMasNuka70Rashum` / `txtMasNuka70Bz`, exactly as row 84 does with `txtSeif69` → `txt042`.
+
+**The result page is the authoritative refund.** `frmResult.aspx` gives מס ברוטו, זיכויים, מס מגיע,
+ניכויים במקור, חיוב שערוך and `יתרת מס להיום`. Report **that** number, not the skill's estimate — see
+the capital-gains warning in Step 4.
 
 #### Saving
 - Save button: `page.click('#btnShmiraZemani')` (NOT `__doPostBack` which may lose disabled fields).
@@ -476,14 +612,67 @@ reports only the net gain and the tax withheld.
 - Success message: "הדו''ח נשמר בהצלחה – שמירה זמנית"
 
 #### Document upload (מערכת צרופות)
-After filling the form, navigate to the נספחים tab (LinkButton8) and click "העלאת נספחים" to enter the attachments system. Upload **all** files from the data folder — PDFs **and** images (jpg, jpeg, bmp, gif). The system accepts: xlsx, docx, jpeg, jpg, bmp, gif, pdf, csv. Max 30MB per file.
-- Use the "הוספת מסמכים" link to open the bulk upload dialog ("הוספה מרובה של מסמכים").
-- Use Playwright `page.expect_file_chooser()` with the Kendo upload button's hidden `input[type="file"]` — click via JS: find `.k-upload-button` with `offsetParent !== null` in the `.modal.fade.in`, then `input.click()`.
-- Select **all** files in a **single** file chooser action (do NOT open a second chooser within the same dialog — this crashes the server).
-- Click אישור to upload.
-- Repeat the dialog if needed for additional files.
-- Verify each file shows "נקלט בהצלחה".
-- Click "סיום" when done.
+
+The **נספחים tab (LinkButton8) is empty** — it is not the upload route. Call `showZrufot()` from any
+data tab (it is the top-nav "העלאת מסמכים"). A gate appears in the `frmGoToZrufot` iframe warning that
+changes are not saved on the way out: pick `rbImShmira90` (with save) and click its `btnIshur`. That
+lands on `TmDocMagrCntr/startpage.aspx`.
+
+Accepted: xlsx, docx, jpeg, jpg, bmp, gif, pdf, csv — max 30MB each. **PNG is not accepted.** Do not
+upload the skill's own `refund-report-*.md` or `form-135-filled-*.pdf`: they are working notes, and
+uploading a self-generated "Form 135" carrying an estimated refund into a 1301 filing puts a wrong
+number in front of the assessor.
+
+Upload with the **file chooser**, not by setting the input directly:
+
+```python
+with pg.expect_file_chooser() as fc:
+    pg.evaluate("""()=>{const m=[...document.querySelectorAll('.modal')].filter(x=>x.offsetParent!==null)[0]||document;
+      const d=[...m.querySelectorAll('.k-upload-button')].filter(e=>e.offsetParent!==null)[0];
+      d.querySelector('input[type=file]').click();}""")
+fc.value.set_files(files)          # all files in ONE action
+```
+
+`set_input_files` on the Kendo input **silently does nothing useful** — the widget shows every file as
+`k-file-success` but no `GetDocDetailsByDocName` request fires and the Angular model stays empty, so
+אישור saves nothing. The file-chooser path is the only one that drives the pipeline.
+
+Then click **the visible** אישור: several hidden buttons share that label, and clicking one corrupts
+the modal state and leaves the real button disabled (`enablebtnok`). Filter on `is_visible()`.
+The commit is slow — the modal shows "שומר" for up to a minute, then clears.
+
+**Verifying what actually landed — this is where it goes wrong.** Committed files live in
+`Groups[].FilesList[].FileLoadName`, fetched by the category directive's `goBringGroups(0)`.
+**`vm.filesUpload` is only the staging list and always reads 0 after a successful commit.** Reading it
+to confirm makes a working upload look failed; retrying then duplicates everything. A `SaveTzrufa`
+200 plus "נקלט בהצלחה" is the real success signal — trust it.
+
+```python
+pg.evaluate("""()=>{const outer=[...document.querySelectorAll('.ng-isolate-scope')]
+   .filter(e=>/הוספת מסמכים לדו/.test(e.innerText||''))[0];
+ const so=angular.element(outer).isolateScope(); so.vm.open=true; so.$apply();
+ const cat=[...outer.querySelectorAll('.ng-isolate-scope')].filter(e=>e.getAttribute('categories')!==null)[0];
+ angular.element(cat).isolateScope().vm.goBringGroups(0);}""")
+# then read FilesList[].FileLoadName and count copies per name
+```
+
+**Removing duplicates.** The per-file delete buttons do not render when
+`ctrlGroupData.ModEnter == 2`, so call the row directive's functions directly. Identity is **LogID**
+(unique per upload); `vm.deleteDoc()` PUTs to `ShDocuments/deleteTzrufaFromMagar` and splices the
+local list, so re-find the next target **by LogID after every delete** instead of precomputing
+indices. Guard against deleting a filename's last copy.
+
+```python
+s.vm.toDelete(idx); s.vm.deleteDoc()   # idx = current index of the target LogID
+```
+
+Finish with "סיום" → confirm the `wnd_Close` modal's אישור, which returns to the form.
+
+#### Ask the Authority what is missing, don't infer it
+
+`בדיקת מסמכים חסרים` on `frmMenu` (`rbMismacimHaserim` + tik + year → `btnIshur`) returns the Tax
+Authority's own verdict, e.g. `לא נמצאו מסמכים חסרים`. Run it before telling the user the paperwork is
+complete — it beats reconstructing the requirement list from the form's "מצ"ב" labels.
 
 5. **NEVER click Submit (btnShidur).** Tell the user: "All fields are filled. Review the form in the browser and submit manually when ready."
 

@@ -136,6 +136,9 @@ def generate_report(calc: dict) -> str:
         lines.append("")
         lines.append(f"**רווח/הפסד נטו:** {fmt(cg['net_gain_loss'])} ₪")
         lines.append(f"**מס רווח הון:** {fmt(cg['tax'])} ₪")
+        if cg.get("note"):
+            lines.append("")
+            lines.append(f"> ⚠ {cg['note']}")
         if cg["carry_forward_loss"] > 0:
             lines.append(f"**הפסד להעברה:** {fmt(cg['carry_forward_loss'])} ₪")
         lines.append("")

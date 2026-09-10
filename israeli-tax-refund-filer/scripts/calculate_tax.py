@@ -290,23 +290,46 @@ def calculate_insurance_credit(insurance: list, primary_id: str) -> dict:
 
 
 def calculate_capital_gains(brokerage: list, tax_data: dict) -> dict:
-    """Calculate capital gains tax from brokerage transactions."""
+    """Calculate capital gains tax from brokerage transactions.
+
+    Only the REAL gain is taxable. Section 88 splits a capital gain into a real
+    part (taxed at capital_gains_rate) and an inflationary part (exempt), by
+    indexing the original cost to the CPI between purchase and sale. We carry no
+    CPI table and a Form 106 reports only the nominal gain, so a transaction may
+    supply `real_gain` explicitly; otherwise the nominal `gain_loss` is used and
+    the result is flagged, because a nominal figure OVERSTATES the tax.
+    """
     if not brokerage:
-        return {"transactions": [], "net_gain_loss": 0, "tax": 0, "carry_forward_loss": 0}
+        return {"transactions": [], "net_gain_loss": 0, "tax": 0,
+                "carry_forward_loss": 0, "basis": "none", "note": None}
 
     net = sum(t["gain_loss"] for t in brokerage)
-    if net > 0:
-        tax = net * tax_data["capital_gains_rate"]
+    taxable = sum(t.get("real_gain", t["gain_loss"]) for t in brokerage)
+    nominal_only = any("real_gain" not in t for t in brokerage)
+
+    if taxable > 0:
+        tax = taxable * tax_data["capital_gains_rate"]
         carry_forward = 0
     else:
         tax = 0
-        carry_forward = abs(net)
+        carry_forward = abs(taxable)
+
+    note = None
+    if nominal_only and net > 0:
+        note = (
+            "מס רווח ההון חושב על הרווח הנומינלי. החוק ממסה רק את הרווח הריאלי "
+            "(הסכום האינפלציוני פטור), ולכן המס כאן הוא תקרה וההחזר בפועל גבוה יותר. "
+            "החישוב המחייב הוא כפתור \"חישוב\" בפורטל."
+        )
 
     return {
         "transactions": brokerage,
         "net_gain_loss": round(net, 2),
+        "taxable_gain": round(taxable, 2),
         "tax": round(tax, 2),
         "carry_forward_loss": round(carry_forward, 2),
+        "basis": "nominal" if nominal_only else "real",
+        "note": note,
     }
 
 
@@ -330,25 +353,30 @@ def calculate_refund(parsed_data: dict, personal: dict) -> dict:
 
     capital_gains = calculate_capital_gains(parsed_data.get("brokerage", []), tax_data)
 
-    # Surtax base is ALL taxable income, salary + capital. From 2025 a second tier
-    # adds 2% on the capital-source portion sitting above the same threshold.
+    # Surtax base is ALL taxable income, salary + capital (the taxable/real gain).
+    #
+    # From 2025 there is a second tier of 2% — but it keys on CAPITAL-SOURCE income
+    # ALONE exceeding the same threshold, and applies only to that excess. It is NOT
+    # 2% on whatever capital sits above the combined threshold: with a 721,560 ceiling
+    # that tier almost never fires for a salaried filer. Getting this wrong added a
+    # phantom 2,731 ₪ of tax on a real 2025 return and understated the refund 4x.
     surtax = 0
     surtax_details = None
-    capital_income = max(0, capital_gains["net_gain_loss"])
+    capital_income = max(0, capital_gains.get("taxable_gain", capital_gains["net_gain_loss"]))
     surtax_base = taxable_income + capital_income
     threshold = tax_data["surtax_threshold"]
     if surtax_base > threshold:
         excess = surtax_base - threshold
         tier1 = excess * tax_data["surtax_rate_active"]
-        capital_above = min(capital_income, excess)
-        tier2 = capital_above * tax_data.get("surtax_rate_capital_extra", 0)
+        capital_excess = max(0, capital_income - threshold)
+        tier2 = capital_excess * tax_data.get("surtax_rate_capital_extra", 0)
         surtax = tier1 + tier2
         surtax_details = {
             "threshold": threshold,
             "excess": round(excess, 2),
             "rate": tax_data["surtax_rate_active"],
             "tier1_amount": round(tier1, 2),
-            "capital_above_threshold": round(capital_above, 2),
+            "capital_above_threshold": round(capital_excess, 2),
             "capital_extra_rate": tax_data.get("surtax_rate_capital_extra", 0),
             "tier2_amount": round(tier2, 2),
             "amount": round(surtax, 2),
